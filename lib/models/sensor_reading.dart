@@ -1,33 +1,32 @@
+// lib/models/sensor_reading.dart
 class SensorReading {
-  final DateTime timestamp;
-  final double value;
-  final String sensorType;
-  final String unit;
-  
+  final int id;
+  final double temperature;
+  final double humidity;
+  final int soilMoisture;
+  final int lightLevel;
+  final bool pumpStatus;
+  final DateTime insertedAt;
+
   SensorReading({
-    required this.timestamp,
-    required this.value,
-    required this.sensorType,
-    required this.unit,
+    required this.id,
+    required this.temperature,
+    required this.humidity,
+    required this.soilMoisture,
+    required this.lightLevel,
+    required this.pumpStatus,
+    required this.insertedAt,
   });
-  
-  // Convert to Map for database storage
-  Map<String, dynamic> toMap() {
-    return {
-      'timestamp': timestamp.millisecondsSinceEpoch,
-      'value': value,
-      'sensorType': sensorType,
-      'unit': unit,
-    };
-  }
-  
-  // Create from Map for database retrieval
-  factory SensorReading.fromMap(Map<String, dynamic> map) {
+
+  factory SensorReading.fromJson(Map<String, dynamic> json) {
     return SensorReading(
-      timestamp: DateTime.fromMillisecondsSinceEpoch(map['timestamp']),
-      value: map['value'],
-      sensorType: map['sensorType'],
-      unit: map['unit'],
+      id: json['id'],
+      temperature: json['temperature'].toDouble(),
+      humidity: json['humidity'].toDouble(),
+      soilMoisture: json['soil_moisture'],
+      lightLevel: json['light_level'],
+      pumpStatus: json['pump_status'],
+      insertedAt: DateTime.parse(json['inserted_at']),
     );
   }
 }

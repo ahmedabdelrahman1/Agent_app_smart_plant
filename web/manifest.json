@@ -1,6 +1,6 @@
 {
-    "name": "agent_app",
-    "short_name": "agent_app",
+    "name": "agnet_app_2",
+    "short_name": "agnet_app_2",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

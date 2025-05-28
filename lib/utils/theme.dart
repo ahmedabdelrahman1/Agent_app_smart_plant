@@ -86,8 +86,8 @@ final ThemeData appTheme = ThemeData(
     contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
   ),
   
-  // Card theme
-  cardTheme: CardTheme(
+  // Card theme - FIXED: Changed CardTheme to CardThemeData
+  cardTheme: CardThemeData(
     elevation: 2.0,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(12.0),
@@ -177,8 +177,8 @@ final ThemeData darkAppTheme = ThemeData(
     ),
   ),
   
-  // Card theme - dark
-  cardTheme: CardTheme(
+  // Card theme - dark - FIXED: Changed CardTheme to CardThemeData
+  cardTheme: CardThemeData(
     color: Color(0xFF1E1E1E),
     elevation: 2.0,
     shape: RoundedRectangleBorder(

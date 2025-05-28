@@ -1,4 +1,4 @@
-name: agent_app
+name: agnet_app_2
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.6.2
+  sdk: ^3.8.0
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -37,7 +37,7 @@ dependencies:
   percent_indicator: ^4.2.3
   
   # Camera & Image Processing
-  camera: ^0.10.5+2
+  camera: ^0.10.5+9
   image_picker: ^0.8.7+5
   path_provider: ^2.0.15
   path: ^1.8.3
@@ -48,15 +48,18 @@ dependencies:
   # Data Handling & Storage
   http: ^0.13.6
   shared_preferences: ^2.1.1
-  sqflite: ^2.2.8+4
+  
   intl: ^0.18.1
   
+  fl_chart: ^0.68.0
+
   # Utilities
-  permission_handler: ^10.2.0
-  
+  permission_handler: ^11.3.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your
@@ -76,9 +79,9 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  assets:
-    - assets/images/images.png
-    
+  # assets:
+  #   - images/a_dot_burr.jpeg
+  #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
