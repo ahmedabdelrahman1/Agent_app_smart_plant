@@ -53,6 +53,7 @@ dependencies:
   intl: ^0.18.1
   
   fl_chart: ^0.68.0
+  onesignal_flutter: ^5.0.4
 
   # Utilities
   permission_handler: ^11.3.1

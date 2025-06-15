@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../widgets/sensor_card.dart';
 import '../widgets/control_widget.dart';
@@ -6,25 +7,26 @@ import 'history_screen.dart';
 import '../utils/constants.dart';
 import '../services/sensor_service.dart';
 import '../models/sensor_reading.dart';
+import '../services/notification_service.dart';
+import 'notification_settings_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   @override
   _DashboardScreenState createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProviderStateMixin {
-  // Data handling
+class _DashboardScreenState extends State<DashboardScreen>
+    with SingleTickerProviderStateMixin {
   SensorReading? _latestReading;
   bool _isLoading = true;
   String _errorMessage = '';
-  
-  // Control values
+
   double sunShieldPosition = 50.0;
   bool pumpActive = false;
-  
-  // Animation
+
   late AnimationController _controller;
-  
+  late Timer _autoRefreshTimer;
+
   @override
   void initState() {
     super.initState();
@@ -32,33 +34,38 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     )..forward();
-    
-    // Fetch latest sensor data
+
     _loadLatestData();
-  }
-  
-  Future<void> _loadLatestData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
+
+    // Start auto-refresh every 5 seconds
+    _autoRefreshTimer = Timer.periodic(Duration(seconds: 10), (timer) {
+      _loadLatestData();
     });
-    
-    try {
-      final dataList = await SensorService.fetchLatestSensorData();
-      
-       setState(() {
+  }
+
+  Future<void> _loadLatestData() async {
+  setState(() {
+    _isLoading = true;
+    _errorMessage = '';
+  });
+
+  try {
+    final dataList = await SensorService.fetchLatestSensorData();
+    setState(() {
       if (dataList.isNotEmpty) {
         final latestData = dataList.first;
-        // Create a SensorReading from SensorData
         _latestReading = SensorReading(
           id: DateTime.now().millisecondsSinceEpoch,
           temperature: latestData.temperature,
           humidity: latestData.humidity,
-          soilMoisture: (latestData.soilMoisture * 100).toInt(), // Convert to percentage
+          soilMoisture: (latestData.soilMoisture * 100).toInt(),
           lightLevel: latestData.lightLevel.toInt(),
-          pumpStatus: pumpActive, // Keep current pump status
+          pumpStatus: pumpActive,
           insertedAt: latestData.timestamp,
         );
+        
+        // Check thresholds and send notifications if needed
+        NotificationService.checkAndNotify(_latestReading!);
       }
       _isLoading = false;
     });
@@ -69,24 +76,26 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     });
     print('Error loading sensor data: $e');
   }
-  }
-  
-  // Get safe values with fallbacks
+}
+
   double get temperature => _latestReading?.temperature ?? 24.5;
-double get moistureLevel => _latestReading != null ? _latestReading!.soilMoisture.toDouble() / 100 : 65.0;
+  double get moistureLevel => _latestReading != null
+      ? _latestReading!.soilMoisture.toDouble() / 100
+      : 65.0;
   double get lightLevel => _latestReading?.lightLevel.toDouble() ?? 75.0;
   double get humidity => _latestReading?.humidity ?? 65.0;
-  
+
   @override
   void dispose() {
     _controller.dispose();
+    _autoRefreshTimer.cancel(); // Cancel auto-refresh
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: _loadLatestData,
@@ -100,26 +109,22 @@ double get moistureLevel => _latestReading != null ? _latestReading!.soilMoistur
               stretch: true,
               backgroundColor: kPrimaryColor,
               flexibleSpace: FlexibleSpaceBar(
-                title: Text('My Plant Monitor',
+                title: Text(
+                  'My Plant Monitor',
                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
                 ),
                 background: Stack(
                   fit: StackFit.expand,
                   children: [
-                    // Gradient overlay
                     Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                          colors: [
-                            kPrimaryColor,
-                            kPrimaryDarkColor,
-                          ],
+                          colors: [kPrimaryColor, kPrimaryDarkColor],
                         ),
                       ),
                     ),
-                    // Plant pattern overlay with error handling
                     Opacity(
                       opacity: 0.2,
                       child: Image.asset(
@@ -130,7 +135,6 @@ double get moistureLevel => _latestReading != null ? _latestReading!.soilMoistur
                         },
                       ),
                     ),
-                    // Bottom gradient shadow for better text contrast
                     Positioned(
                       bottom: 0,
                       left: 0,
@@ -149,32 +153,37 @@ double get moistureLevel => _latestReading != null ? _latestReading!.soilMoistur
                         ),
                       ),
                     ),
-                    // Status content
                     Positioned(
                       bottom: 70,
                       left: 16,
                       child: FadeTransition(
-                        opacity: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
-                          parent: _controller,
-                          curve: Interval(0.2, 0.8, curve: Curves.easeOut),
-                        )),
+                        opacity: Tween<double>(begin: 0.0, end: 1.0).animate(
+                          CurvedAnimation(
+                            parent: _controller,
+                            curve: Interval(0.2, 0.8, curve: Curves.easeOut),
+                          ),
+                        ),
                         child: Row(
                           children: [
                             Container(
                               width: 12,
                               height: 12,
                               decoration: BoxDecoration(
-                                color: _isLoading ? Colors.amber : 
-                                      _errorMessage.isNotEmpty ? Colors.red : 
-                                      Color(0xFF4ADE80),
+                                color: _isLoading
+                                    ? Colors.amber
+                                    : _errorMessage.isNotEmpty
+                                    ? Colors.red
+                                    : Color(0xFF4ADE80),
                                 shape: BoxShape.circle,
                               ),
                             ),
                             SizedBox(width: 8),
                             Text(
-                              _isLoading ? 'Loading data...' :
-                              _errorMessage.isNotEmpty ? 'Connection error' :
-                              'System Online',
+                              _isLoading
+                                  ? 'Loading data...'
+                                  : _errorMessage.isNotEmpty
+                                  ? 'Connection error'
+                                  : 'System Online',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 14,
@@ -184,7 +193,6 @@ double get moistureLevel => _latestReading != null ? _latestReading!.soilMoistur
                         ),
                       ),
                     ),
-                    // Last updated timestamp
                     if (_latestReading != null)
                       Positioned(
                         bottom: 50,
@@ -200,34 +208,46 @@ double get moistureLevel => _latestReading != null ? _latestReading!.soilMoistur
                   ],
                 ),
               ),
+              
               actions: [
-                IconButton(
-                  icon: Icon(Icons.refresh),
-                  tooltip: 'Refresh data',
-                  onPressed: _loadLatestData,
-                ),
-                IconButton(
-                  icon: Container(
-                    padding: EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(Icons.camera_alt_outlined),
-                  ),
-                  tooltip: 'Diagnose Plant',
-                  onPressed: () {
-                    Navigator.push(
-                      context, 
-                      MaterialPageRoute(builder: (context) => CameraScreen()),
-                    );
-                  },
-                ),
-                SizedBox(width: 8),
-              ],
+  IconButton(
+    icon: Container(
+      padding: EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.2),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(Icons.notifications_outlined),
+    ),
+    tooltip: 'Notification Settings',
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => NotificationSettingsScreen()),
+      );
+    },
+  ),
+  IconButton(
+    icon: Container(
+      padding: EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.2),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(Icons.camera_alt_outlined),
+    ),
+    tooltip: 'Diagnose Plant',
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => CameraScreen()),
+      );
+    },
+  ),
+  SizedBox(width: 8),
+],
             ),
-            
-            // Display loading indicator or error if needed
+
             if (_isLoading)
               SliverToBoxAdapter(
                 child: Container(
@@ -236,7 +256,7 @@ double get moistureLevel => _latestReading != null ? _latestReading!.soilMoistur
                   child: CircularProgressIndicator(),
                 ),
               ),
-              
+
             if (!_isLoading && _errorMessage.isNotEmpty)
               SliverToBoxAdapter(
                 child: Container(
@@ -268,8 +288,7 @@ double get moistureLevel => _latestReading != null ? _latestReading!.soilMoistur
                   ),
                 ),
               ),
-            
-            // Main content
+
             if (!_isLoading && _errorMessage.isEmpty)
               SliverPadding(
                 padding: EdgeInsets.fromLTRB(16, 24, 16, 0),
@@ -279,20 +298,19 @@ double get moistureLevel => _latestReading != null ? _latestReading!.soilMoistur
                     children: [
                       Text(
                         'Today\'s Readings',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.w700),
                       ),
                       SizedBox(height: 8),
                       Text(
                         'Monitor your plant\'s environment in real-time',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                          color: isDarkMode
+                              ? Colors.grey[400]
+                              : Colors.grey[600],
                         ),
                       ),
                       SizedBox(height: 24),
-                      
-                      // Quick stats summary
                       Container(
                         padding: EdgeInsets.symmetric(vertical: 8),
                         child: Row(
@@ -300,7 +318,7 @@ double get moistureLevel => _latestReading != null ? _latestReading!.soilMoistur
                             _buildQuickStatItem(
                               context,
                               icon: Icons.thermostat_outlined,
-                              value: '${temperature.toStringAsFixed(1)}°C', 
+                              value: '${temperature.toStringAsFixed(1)}°C',
                               label: 'Temp',
                               color: kTemperatureColor,
                               delay: 0.0,
@@ -309,7 +327,7 @@ double get moistureLevel => _latestReading != null ? _latestReading!.soilMoistur
                             _buildQuickStatItem(
                               context,
                               icon: Icons.water_drop_outlined,
-                              value: '${(moistureLevel).toStringAsFixed(1)}%', 
+                              value: '${moistureLevel.toStringAsFixed(1)}%',
                               label: 'Moisture',
                               color: kMoistureColor,
                               delay: 0.2,
@@ -318,7 +336,7 @@ double get moistureLevel => _latestReading != null ? _latestReading!.soilMoistur
                             _buildQuickStatItem(
                               context,
                               icon: Icons.wb_sunny_outlined,
-                              value: '${lightLevel.toStringAsFixed(1)} lux', 
+                              value: '${lightLevel.toStringAsFixed(1)} lux',
                               label: 'Light',
                               color: kLightColor,
                               delay: 0.4,
@@ -326,7 +344,6 @@ double get moistureLevel => _latestReading != null ? _latestReading!.soilMoistur
                           ],
                         ),
                       ),
-                      
                       SizedBox(height: 24),
                       Text(
                         'Detailed Monitoring',
@@ -339,14 +356,12 @@ double get moistureLevel => _latestReading != null ? _latestReading!.soilMoistur
                   ),
                 ),
               ),
-          
-            // Sensor cards
+
             if (!_isLoading && _errorMessage.isEmpty)
               SliverPadding(
                 padding: EdgeInsets.symmetric(horizontal: 16),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
-                    // Modern sensor cards with better visual design
                     ModernSensorCard(
                       title: 'Temperature',
                       value: temperature,
@@ -356,12 +371,12 @@ double get moistureLevel => _latestReading != null ? _latestReading!.soilMoistur
                       gradientColors: [Color(0xFFFF9A9E), Color(0xFFFAD0C4)],
                       minValue: 15,
                       maxValue: 35,
-                      idealRange: 'Ideal: 18-27°C',
-                      onViewHistory: () => _navigateToHistory('Temperature', '°C'),
+                      idealRange: 'Ideal: 18-29°C',
+                      onViewHistory: () =>
+                          _navigateToHistory('Temperature', '°C'),
                       delay: 0.1,
                       controller: _controller,
                     ),
-                    
                     ModernSensorCard(
                       title: 'Soil Moisture',
                       value: moistureLevel,
@@ -372,11 +387,11 @@ double get moistureLevel => _latestReading != null ? _latestReading!.soilMoistur
                       minValue: 0,
                       maxValue: 100,
                       idealRange: 'Ideal: 40-70%',
-                      onViewHistory: () => _navigateToHistory('Soil Moisture', '%'),
+                      onViewHistory: () =>
+                          _navigateToHistory('Soil Moisture', '%'),
                       delay: 0.2,
                       controller: _controller,
                     ),
-                    
                     ModernSensorCard(
                       title: 'Light Intensity',
                       value: lightLevel,
@@ -386,33 +401,28 @@ double get moistureLevel => _latestReading != null ? _latestReading!.soilMoistur
                       gradientColors: [Color(0xFFFFC371), Color(0xFFFF5F6D)],
                       minValue: 0,
                       maxValue: 100,
-                      idealRange: 'Ideal: 50-80 lux',
-                      onViewHistory: () => _navigateToHistory('Light Level', 'lux'),
+                      idealRange: 'Ideal: 10,000-20,000 lux',
+                      onViewHistory: () =>
+                          _navigateToHistory('Light Level', 'lux'),
                       delay: 0.3,
                       controller: _controller,
                     ),
-
                     ModernSensorCard(
-  title: 'Humidity',
-  value: humidity,
-  unit: '%',
-  icon: Icons.water_drop_outlined,
-  color: Colors.blue,
-  gradientColors: [Color(0xFF00B4DB), Color(0xFF0083B0)],
-  minValue: 0,
-  maxValue: 100,
-  idealRange: 'Ideal: 50-70%',
-  onViewHistory: () => _navigateToHistory('Humidity', '%'),
-  delay: 0.35,
-  controller: _controller,
-),
-                    
+                      title: 'Humidity',
+                      value: humidity,
+                      unit: '%',
+                      icon: Icons.water_drop_outlined,
+                      color: Colors.blue,
+                      gradientColors: [Color(0xFF00B4DB), Color(0xFF0083B0)],
+                      minValue: 0,
+                      maxValue: 100,
+                      idealRange: 'Ideal: 40-70%',
+                      onViewHistory: () => _navigateToHistory('Humidity', '%'),
+                      delay: 0.35,
+                      controller: _controller,
+                    ),
                     SizedBox(height: 24),
-                  
                     SizedBox(height: 16),
-                    
-                    
-                    
                     SizedBox(height: 24),
                   ]),
                 ),
@@ -422,13 +432,12 @@ double get moistureLevel => _latestReading != null ? _latestReading!.soilMoistur
       ),
     );
   }
-  
-  // Format the DateTime for display
+
   String _formatDateTime(DateTime dateTime) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final date = DateTime(dateTime.year, dateTime.month, dateTime.day);
-    
+
     if (date == today) {
       return 'Today, ${_formatTime(dateTime)}';
     } else if (date == today.subtract(Duration(days: 1))) {
@@ -437,21 +446,19 @@ double get moistureLevel => _latestReading != null ? _latestReading!.soilMoistur
       return '${dateTime.day}/${dateTime.month}, ${_formatTime(dateTime)}';
     }
   }
-  
+
   String _formatTime(DateTime dateTime) {
     final hour = dateTime.hour.toString().padLeft(2, '0');
     final minute = dateTime.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
   }
-  
-  // Method to update pump status in database
+
   Future<void> _updatePumpStatus(bool status) async {
-    // Here you would add code to update the pump status in your database
-    // For now, we'll just print the status change
     print('Pump status changed to: $status');
   }
-  
-  Widget _buildQuickStatItem(BuildContext context, {
+
+  Widget _buildQuickStatItem(
+    BuildContext context, {
     required IconData icon,
     required String value,
     required String label,
@@ -460,18 +467,20 @@ double get moistureLevel => _latestReading != null ? _latestReading!.soilMoistur
   }) {
     return Expanded(
       child: FadeTransition(
-        opacity: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
-          parent: _controller,
-          curve: Interval(delay, delay + 0.6, curve: Curves.easeOut),
-        )),
-        child: SlideTransition(
-          position: Tween<Offset>(
-            begin: Offset(0, 0.2),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(
+        opacity: Tween<double>(begin: 0.0, end: 1.0).animate(
+          CurvedAnimation(
             parent: _controller,
             curve: Interval(delay, delay + 0.6, curve: Curves.easeOut),
-          )),
+          ),
+        ),
+        child: SlideTransition(
+          position: Tween<Offset>(begin: Offset(0, 0.2), end: Offset.zero)
+              .animate(
+                CurvedAnimation(
+                  parent: _controller,
+                  curve: Interval(delay, delay + 0.6, curve: Curves.easeOut),
+                ),
+              ),
           child: Card(
             elevation: 0,
             color: color.withOpacity(0.1),
@@ -487,10 +496,7 @@ double get moistureLevel => _latestReading != null ? _latestReading!.soilMoistur
                   SizedBox(height: 8),
                   Text(
                     value,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                   Text(
                     label,
@@ -507,18 +513,13 @@ double get moistureLevel => _latestReading != null ? _latestReading!.soilMoistur
       ),
     );
   }
-  
+
   void _navigateToHistory(String sensorType, String unit) async {
-  debugPrint('Navigating to history for: $sensorType');
-  
-  await Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => const HistoryScreen(),
-    ),
-  );
-  
-  // Optionally refresh dashboard data when returning
-  debugPrint('Returned from history screen');
-}
+    debugPrint('Navigating to history for: $sensorType');
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const HistoryScreen()),
+    );
+    debugPrint('Returned from history screen');
+  }
 }

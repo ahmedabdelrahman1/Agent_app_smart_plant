@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "508983326674",
+    "project_id": "smart-plant-65112",
+    "storage_bucket": "smart-plant-65112.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:508983326674:android:83722d135c8cf7c6d23a0b",
+        "android_client_info": {
+          "package_name": "com.example.agent_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDOmz4ORhi2jxMnAkk88THwJvH-hPaofhY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

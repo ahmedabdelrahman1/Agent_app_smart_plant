@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/settings_screen.dart';
 import 'utils/theme.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   // Add this line - IMPORTANT
@@ -13,6 +14,8 @@ void main() async {
     url: 'https://kwpruamypgndlsbhbtlx.supabase.co', // Replace with your URL
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3cHJ1YW15cGduZGxzYmhidGx4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgzNTA2NzEsImV4cCI6MjA2MzkyNjY3MX0.4hLP0_X-ZJzM1hkvNmYMwwmAfEg-LjnxX-E0Gq9de30', // Replace with your anon key
   );
+  
+  await NotificationService.initialize();
   
   runApp(PlantMonitorApp());
 }
