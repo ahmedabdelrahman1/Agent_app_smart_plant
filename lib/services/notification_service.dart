@@ -30,8 +30,8 @@ class NotificationService {
   static const double DEFAULT_TEMP_MAX = 29.0;
   static const double DEFAULT_MOISTURE_MIN = 40.0;
   static const double DEFAULT_MOISTURE_MAX = 70.0;
-  static const double DEFAULT_LIGHT_MIN = 30.0;
-  static const double DEFAULT_LIGHT_MAX = 80.0;
+  static const double DEFAULT_LIGHT_MIN = 2000;
+  static const double DEFAULT_LIGHT_MAX = 20000;
   static const double DEFAULT_HUMIDITY_MIN = 40.0;
   static const double DEFAULT_HUMIDITY_MAX = 70.0;
 
